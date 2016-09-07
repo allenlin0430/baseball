@@ -63,4 +63,4 @@ dat.1 = cbind("球員" = as.character(球員名稱),
 detach(dat.1)
 
 write.csv(dat, paste(Sys.Date(),"OPS.csv"), row.names = F)
-write.csv(dat, paste(Sys.Date(),"OPSlessPA.csv"), row.names = F)
+write.csv(dat.1, paste(Sys.Date(),"OPSlessPA.csv"), row.names = F)

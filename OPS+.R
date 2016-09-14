@@ -44,6 +44,11 @@ dat = cbind("球員" = as.character(球員名稱),
             "OPS" = round(OPS,3),
             "OPS+" = round(`OPS+`,1),
             "IsoP" = IsoP)
+dat = data.frame(dat, stringsAsFactors = F)
+for(i in 3:ncol(dat)){
+  dat[,i] = as.numeric(dat[,i])
+}
+dat$'球隊' = factor(dat$'球隊')
 detach(dat)
 
 # 取出 2 <= PA/G < 3 1
@@ -60,6 +65,11 @@ dat.1 = cbind("球員" = as.character(球員名稱),
             "OPS" = round(OPS,3),
             "OPS+" = round(`OPS+`,1),
             "IsoP" = IsoP)
+dat.1 = data.frame(dat.1, stringsAsFactors = F)
+dat.1$'球隊' = factor(dat.1$'球隊')
+for(i in 3:ncol(dat.1)){
+  dat.1[,i] = as.numeric(dat.1[,i])
+}
 detach(dat.1)
 
 write.csv(dat, paste(Sys.Date(),"OPS.csv"), row.names = F)

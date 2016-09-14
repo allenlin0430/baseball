@@ -1,4 +1,5 @@
 library(xml2)
+library(dplyr)
 #library(xmlview)
 #### batter stat data
 ### set your target url
@@ -54,29 +55,30 @@ repeat{
   name1 = c(name1, name)
   p = p+1
 }
-batterinfo = cbind("球員名稱" = name1,"網址" = t1)
+batterinfo = cbind(player = name1,`網址` = t1)
 head(batterinfo)
-batterinfo = cbind(batterinfo, "球隊" = rep(0,nrow(batterinfo)))
+
 # 設定球隊
 for(i in 1:nrow(batterinfo)){
   url = as.character(batterinfo[i,2])
   doc <- read_html(url)
   xpath = "/html/body/div[4]/div/div/h1/div/a[1]"
   team.name = substring(xml_text(xml_find_all(doc, xpath)), first = 1)
-  batterinfo[i,3] = team.name
+  batterinfo[i,2] = team.name
 }
-batterinfo = cbind(batterinfo, "狀態" = rep(0,nrow(batterinfo)))
+colnames(batterinfo)[2] = 'team'
+batterinfo = cbind(batterinfo, level = rep(0,nrow(batterinfo)))
 # 藉由隊名裡的二軍，來分類球員目前狀態(一軍/二軍)
-farm.index = grep("二軍",batterinfo[,"球隊"])
-batterinfo[farm.index,4] = "二軍"
-batterinfo[-farm.index,4] = "一軍"
-names(batterinfo)[4] = "狀態"
+farm.index = grep("二軍",batterinfo[, 'team'])
+batterinfo[farm.index, 3] = "二軍"
+batterinfo[-farm.index, 3] = "一軍"
+colnames(batterinfo)[3] = "level"
 
 # 清除整理隊名
-batterinfo[,"球隊"] = sub("統一二軍","統一7-ELEVEn",batterinfo[,"球隊"])
-batterinfo[,"球隊"] = sub("二軍","",batterinfo[,"球隊"])
-batterinfo = batterinfo[,c("球員名稱","球隊","狀態")]
-dat.b = merge(batterinfo, batters , by.x = "球員名稱", by.y = "NAME")
+batterinfo[,"team"] = sub("統一二軍","統一7-ELEVEn",batterinfo[,"team"])
+batterinfo[,"team"] = sub("二軍","",batterinfo[,"team"])
+
+dat.b = merge(batterinfo, batters , by.x = "player", by.y = "NAME")
 
 # Save
 write.csv(dat.b, paste(Sys.Date(),"BattersPlayers.csv", sep = ""),row.names = F)
@@ -122,31 +124,30 @@ repeat{
   name1 = c(name1, name)
   p = p+1
 }
-pitchersinfo = cbind("球員名稱" = name1,"網址" = t1)
+pitchersinfo = cbind("player" = name1,"網址" = t1)
 head(pitchersinfo)
 
 # 球隊標示
-pitchersinfo = cbind(pitchersinfo, "球隊" = rep(0, nrow(pitchersinfo)))
 for(i in 1:nrow(pitchersinfo)){
   url = as.character(pitchersinfo[i,2])
   doc <- read_html(url)
   xpath = "/html/body/div[4]/div/div/h1/div/a[1]"
   team.name = substring(xml_text(xml_find_all(doc, xpath)), first = 1)
-  pitchersinfo[i,3] = team.name
+  pitchersinfo[i,2] = team.name
 }
-
+colnames(pitchersinfo)[2] = 'team'
 # 藉由隊名裡的二軍，來分類球員目前狀態(一軍/二軍)
-pitchersinfo = cbind(pitchersinfo, "狀態" = rep(0, nrow(pitchersinfo)))
-farm.index = grep("二軍",pitchersinfo[,"球隊"])
-pitchersinfo[farm.index,4] = "二軍"
-pitchersinfo[-farm.index,4] = "一軍"
-names(pitchersinfo)[4] = "狀態"
+pitchersinfo = cbind(pitchersinfo, "level" = rep(0, nrow(pitchersinfo)))
+farm.index = grep("二軍",pitchersinfo[,"team"])
+pitchersinfo[farm.index, 3] = "二軍"
+pitchersinfo[-farm.index, 3] = "一軍"
+names(pitchersinfo)[3] = "level"
 
 # 清除整理隊名
-pitchersinfo[,"球隊"] = sub("統一二軍","統一7-ELEVEn",pitchersinfo[,"球隊"])
-pitchersinfo[,"球隊"] = sub("二軍","",pitchersinfo[,"球隊"])
-pitchersinfo = pitchersinfo[,c("球員名稱","球隊","狀態")]
-dat.p = merge(pitchersinfo, pitchers , by.x = "球員名稱", by.y = "NAME")
+pitchersinfo[,"team"] = sub("統一二軍","統一7-ELEVEn",pitchersinfo[,"team"])
+pitchersinfo[,"team"] = sub("二軍","",pitchersinfo[,"team"])
+
+dat.p = merge(pitchersinfo, pitchers , by.x = "player", by.y = "NAME")
 
 # Save
 write.csv(dat.p, paste(Sys.Date(),"PitchersPlayers.csv", sep = ""), row.names = F )

@@ -16,6 +16,7 @@ library(dplyr)
 #### 打者 ####
 p = 1
 t = c()
+u = c()
 repeat{
   url <- paste("http://www.cpbl.com.tw/stats/all.html?year=2016&stat=pbat&online=0&sort=G&order=desc&per_page=", p, sep = "")
   doc <- read_html(url)
@@ -24,6 +25,10 @@ repeat{
   t1 = data.frame(matrix(t1, ncol = 31, byrow = T), stringsAsFactors = F)
   if(nrow(t1) == 0) break
   t = rbind(t,t1)
+  xpath.player <- "//*[@class='gap_b20']/table//tr/td[2]/a"
+  u1 = xml_attrs(xml_find_all(doc, xpath.player), "href")
+  u1 = paste0("http://www.cpbl.com.tw",unlist(u1),sep = "")
+  u = c(u, u1)
   p = p + 1
 }
 
@@ -32,56 +37,61 @@ xpath <- "//*[@class='gap_b20']/table/tr[1]/th"
 title.name = xml_text(xml_find_all(doc, xpath))
 colnames(t) = title.name
 
+# 打者選手的個人資料連結 var.32
+t = cbind(t, u)
+
+# 轉成數值
 for(i in 3:31){
   t[,i] <- as.numeric(t[,i])
 }
+t[,32] = as.character(t[,32])
 batters = t[,-1]
 head(batters)
 dim(batters)
 
-# 打者選手的個人資料連結
-p = 1
-t1 = c()
-name1 = c()
-repeat{
-  url <- paste("http://www.cpbl.com.tw/stats/all.html?year=2016&stat=pbat&online=0&sort=G&order=desc&per_page=", p, sep = "")
-  doc <- read_html(url)
-  xpath.player <- "//*[@class='gap_b20']/table//tr/td[2]/a"
-  name = xml_text(xml_find_all(doc, xpath.player))
-  if(length(name) == 0) break
-  t = xml_attrs(xml_find_all(doc, xpath.player), "href")
-  t = paste0("http://www.cpbl.com.tw",unlist(t),sep = "")
-  t1 = c(t1,t)
-  name1 = c(name1, name)
-  p = p+1
-}
-batterinfo = cbind(player = name1,`網址` = t1)
-head(batterinfo)
 
 # 設定球隊
-for(i in 1:nrow(batterinfo)){
-  url = as.character(batterinfo[i,2])
+for(i in 1:nrow(batters)){
+  url = batters[i,31]
   doc <- read_html(url)
   xpath = "/html/body/div[4]/div/div/h1/div/a[1]"
   team.name = substring(xml_text(xml_find_all(doc, xpath)), first = 1)
-  batterinfo[i,2] = team.name
+  batters[i,31] = team.name
 }
-colnames(batterinfo)[2] = 'team'
-batterinfo = cbind(batterinfo, level = rep(0,nrow(batterinfo)))
+colnames(batters)[31] = 'team'
+
+
+batters = cbind(batters, level = rep(0,nrow(batters)))
 # 藉由隊名裡的二軍，來分類球員目前狀態(一軍/二軍)
-farm.index = grep("二軍",batterinfo[, 'team'])
-batterinfo[farm.index, 3] = "二軍"
-batterinfo[-farm.index, 3] = "一軍"
-colnames(batterinfo)[3] = "level"
+farm.index = grep("二軍",batters[, 'team'])
+batters[farm.index, 32] = "二軍"
+batters[-farm.index, 32] = "一軍"
+
 
 # 清除整理隊名
-batterinfo[,"team"] = sub("統一二軍","統一7-ELEVEn",batterinfo[,"team"])
-batterinfo[,"team"] = sub("二軍","",batterinfo[,"team"])
+batters[,"team"] = sub("統一二軍","統一7-ELEVEn",batters[,"team"])
+batters[,"team"] = sub("二軍","",batters[,"team"])
 
-dat.b = merge(batterinfo, batters , by.x = "player", by.y = "NAME")
+
+# 球隊出賽場次
+url = "http://www.cpbl.com.tw/standing/season/2016.html?&year=2016&season=0"
+doc = read_html(url)
+xpath = "//*[@class = 'gap_b20']/table[1]/tr/td[2]"
+team = xml_text(xml_find_all(doc, xpath),trim = T)
+xpath = "//*[@class = 'gap_b20']/table[1]/tr/td[3]"
+games = xml_text(xml_find_all(doc, xpath),trim = T)
+tmp = cbind(team,games)
+# 新增 TG 變數
+batters = cbind(batters,"TG" = rep(0,nrow(batters)))
+batters[which(batters$team == "中信兄弟"),"TG"] = as.numeric(tmp[team == "中信兄弟", 2])
+batters[which(batters$team == "統一7-ELEVEn"),"TG"] = as.numeric(tmp[team == "統一7-ELEVEn", 2])
+batters[which(batters$team == "Lamigo"),"TG"] = as.numeric(tmp[team == "Lamigo", 2])
+batters[which(batters$team == "義大"),"TG"] = as.numeric(tmp[team == "義大", 2])
+
+
 
 # Save
-write.csv(dat.b, paste(Sys.Date(),"BattersPlayers.csv", sep = ""),row.names = F)
+write.csv(batters, paste(Sys.Date(),"BattersPlayers.csv", sep = ""),row.names = F)
   
 rm(list = ls())
 
@@ -89,6 +99,7 @@ rm(list = ls())
 # 自動收集每頁的資料
 p = 1
 t = c()
+u = c()
 repeat{
   url <- url <- paste("http://www.cpbl.com.tw/stats/all.html?year=2016&stat=ppit&online=0&sort=G&order=desc&per_page=", p, sep = "")
   doc <- read_html(url)
@@ -97,60 +108,64 @@ repeat{
   t1 = data.frame(matrix(t1, ncol = 31, byrow = T), stringsAsFactors = F)
   if(nrow(t1) == 0) break
   t = rbind(t,t1)
+  xpath.player <- "//*[@class='gap_b20']/table//tr/td[2]/a"
+  u1 = xml_attrs(xml_find_all(doc, xpath.player), "href")
+  u1 = paste0("http://www.cpbl.com.tw",unlist(u1),sep = "")
+  u = c(u, u1)
   p = p + 1
 }
 # title names
 xpath <- "//*[@class='gap_b20']/table/tr[1]/th"  
 title.name = xml_text(xml_find_all(doc, xpath))
 colnames(t) = title.name
+
+# 投手選手的個人資料連結 var.32
+t = cbind(t, u)
+
+# 轉成數值
 for(i in 3:31){
   t[,i] <- as.numeric(t[,i])
 }
+t[,32] = as.character(t[,32])
 pitchers = t[,-1]
 
-# 投手選手的個人資料連結
-p = 1
-t1 = c()
-name1 = c()
-repeat{
-  url <- paste("http://www.cpbl.com.tw/stats/all.html?year=2016&stat=ppit&online=0&sort=G&order=desc&per_page=", p, sep = "")
-  doc <- read_html(url)
-  xpath.player <- "//*[@class='gap_b20']/table//tr/td[2]/a"
-  name = xml_text(xml_find_all(doc, xpath.player))
-  if(length(name) == 0) break
-  t = xml_attrs(xml_find_all(doc, xpath.player), "href")
-  t = paste0("http://www.cpbl.com.tw",unlist(t),sep = "")
-  t1 = c(t1,t)
-  name1 = c(name1, name)
-  p = p+1
-}
-pitchersinfo = cbind("player" = name1,"網址" = t1)
-head(pitchersinfo)
 
 # 球隊標示
-for(i in 1:nrow(pitchersinfo)){
-  url = as.character(pitchersinfo[i,2])
+for(i in 1:nrow(pitchers)){
+  url = as.character(pitchers[i,31])
   doc <- read_html(url)
   xpath = "/html/body/div[4]/div/div/h1/div/a[1]"
   team.name = substring(xml_text(xml_find_all(doc, xpath)), first = 1)
-  pitchersinfo[i,2] = team.name
+  pitchers[i,31] = team.name
 }
-colnames(pitchersinfo)[2] = 'team'
+colnames(pitchers)[31] = 'team'
 # 藉由隊名裡的二軍，來分類球員目前狀態(一軍/二軍)
-pitchersinfo = cbind(pitchersinfo, "level" = rep(0, nrow(pitchersinfo)))
-farm.index = grep("二軍",pitchersinfo[,"team"])
-pitchersinfo[farm.index, 3] = "二軍"
-pitchersinfo[-farm.index, 3] = "一軍"
-names(pitchersinfo)[3] = "level"
+pitchers = cbind(pitchers, level = rep(0, nrow(pitchers)))
+farm.index = grep("二軍",pitchers[,"team"])
+pitchers[farm.index, 32] = "二軍"
+pitchers[-farm.index, 32] = "一軍"
 
 # 清除整理隊名
-pitchersinfo[,"team"] = sub("統一二軍","統一7-ELEVEn",pitchersinfo[,"team"])
-pitchersinfo[,"team"] = sub("二軍","",pitchersinfo[,"team"])
+pitchers[,"team"] = sub("統一二軍","統一7-ELEVEn",pitchers[,"team"])
+pitchers[,"team"] = sub("二軍","",pitchers[,"team"])
 
-dat.p = merge(pitchersinfo, pitchers , by.x = "player", by.y = "NAME")
+# 球隊出賽場次
+url = "http://www.cpbl.com.tw/standing/season/2016.html?&year=2016&season=0"
+doc = read_html(url)
+xpath = "//*[@class = 'gap_b20']/table[1]/tr/td[2]"
+team = xml_text(xml_find_all(doc, xpath),trim = T)
+xpath = "//*[@class = 'gap_b20']/table[1]/tr/td[3]"
+games = xml_text(xml_find_all(doc, xpath),trim = T)
+tmp = cbind(team,games)
+# 新增 TG 變數
+pitchers = cbind(pitchers,"TG" = rep(0,nrow(pitchers)))
+pitchers[which(pitchers$team == "中信兄弟"),"TG"] = as.numeric(tmp[team == "中信兄弟", 2])
+pitchers[which(pitchers$team == "統一7-ELEVEn"),"TG"] = as.numeric(tmp[team == "統一7-ELEVEn", 2])
+pitchers[which(pitchers$team == "Lamigo"),"TG"] = as.numeric(tmp[team == "Lamigo", 2])
+pitchers[which(pitchers$team == "義大"),"TG"] = as.numeric(tmp[team == "義大", 2])
 
 # Save
-write.csv(dat.p, paste(Sys.Date(),"PitchersPlayers.csv", sep = ""), row.names = F )
+write.csv(pitchers, paste(Sys.Date(),"PitchersPlayers.csv", sep = ""), row.names = F )
 rm(list = ls())
 
 dat.p = read.csv( paste(Sys.Date(),"PitchersPlayers.csv", sep = ""))
